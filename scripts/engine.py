@@ -10,6 +10,7 @@ def adjust_learning_rate(optimizer, epoch, initial_lr):
         param_group['lr'] = lr
     return lr
 
+
 def training_step(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss_fn):
     model.train()
     ssim_loss_total = 0
@@ -49,6 +50,7 @@ def training_step(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss
     sam_loss_total /= len(train_loader)
     return combined_loss_total, ssim_loss_total, sam_loss_total
 
+
 def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
     model.eval()
     ssim_loss_total = 0
@@ -77,6 +79,7 @@ def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
     sam_loss_total /= len(val_loader)
 
     return combined_loss_total, ssim_loss_total, sam_loss_total
+
 
 def train(train_loader,
           val_loader,
