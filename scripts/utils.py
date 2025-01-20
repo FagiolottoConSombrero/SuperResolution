@@ -116,7 +116,7 @@ def check_early_stopping(val_loss, model, early_stopping, epoch, best_model_path
 
 def adjust_learning_rate(optimizer, epoch, initial_lr):
     """Sets the learning rate to the initial LR decayed by 10 every 10 epochs"""
-    lr = initial_lr * (0.1 ** (epoch // 50))
+    lr = initial_lr * (0.1 ** (epoch // 30))
     return lr
 
 class EarlyStopping():
