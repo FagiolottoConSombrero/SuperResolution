@@ -91,7 +91,6 @@ class SIDLoss(nn.Module):
         return torch.mean(torch.sum(divergence_1 + divergence_2, dim=1))
 
 
-
 def save_checkpoint(model, epoch):
     model_out_path = "checkpoint/" + "model_epoch_{}.pth".format(epoch)
     if not os.path.exists("checkpoint/"):
@@ -169,26 +168,58 @@ def calculate_mean_std(dataset):
     std /= total_samples
     return mean.numpy(), std.numpy()
 
-def get_transforms():
-    # Medie e deviazioni standard scalate per il range [0, 1]
-    mean = [53.63522448, 58.30869008, 57.10608313, 108.39563089, 111.95032318,
-            105.9614267, 90.19320486, 122.35541551, 116.40579098, 107.22275369,
-            71.46360708, 89.26980523, 62.22486445, 55.22971295]
-    std = [36.34952606, 42.07507617, 41.42893763, 74.13830411, 76.55226538,
-           72.69417164, 62.22261903, 85.1147687, 82.00505138, 74.16726475,
-           48.74070934, 61.01281974, 44.47178134, 40.2399229]
 
-    # Scala mean e std al range [0, 1]
+def scale_0_1(x):
+    return x/255
+
+
+def get_transforms(mean, std):
+    """
+    Crea una pipeline di trasformazioni normalizzando i valori con mean e std scalati.
+    """
     scaled_mean = [m / 255.0 for m in mean]
     scaled_std = [s / 255.0 for s in std]
 
-    # Trasformazioni con ordine corretto
+    # Trasformazioni
     basic_transforms = v2.Compose([
         v2.ToImage(),
-        v2.ToDtype(torch.float32),  # Converte numpy.ndarray in torch.Tensor con valori [0, 1]
+        v2.ToDtype(torch.float32),
+        v2.Lambda(scale_0_1),
         v2.Normalize(mean=scaled_mean, std=scaled_std)  # Applica normalizzazione
     ])
     return basic_transforms
+
+
+def get_input_transforms():
+    """
+    Restituisce trasformazioni separate per input e target, utilizzando mean e std definiti.
+    """
+    # Mean e std per input
+    input_mean = [53.63522448, 58.30869008, 57.10608313, 108.39563089, 111.95032318,
+                  105.9614267, 90.19320486, 122.35541551, 116.40579098, 107.22275369,
+                  71.46360708, 89.26980523, 62.22486445, 55.22971295]
+    input_std = [36.34952606, 42.07507617, 41.42893763, 74.13830411, 76.55226538,
+                 72.69417164, 62.22261903, 85.1147687, 82.00505138, 74.16726475,
+                 48.74070934, 61.01281974, 44.47178134, 40.2399229]
+    # Creazione delle trasformazioni
+    input_transform = get_transforms(input_mean, input_std)
+
+    return input_transform
+
+
+def get_target_transforms():
+    """
+    Restituisce trasformazioni separate per input e target, utilizzando mean e std definiti.
+    """
+    # Mean e std per target
+    target_mean = [22.857117, 24.836193, 24.325882, 46.193604, 47.71157,  45.155228, 38.434223,
+                   52.14261,  49.610733, 45.696888, 30.455795, 38.04653,  26.50503,  23.525055]
+    target_std = [11.985463, 14.316695, 14.093582, 24.880175, 25.645956, 24.483856, 21.006227,
+                  28.719099, 27.773434, 24.99851,  16.294231, 20.485502, 15.148599, 13.781046]
+
+    target_transform = get_transforms(target_mean, target_std)
+
+    return target_transform
 
 
 def mat2npy(dirs):

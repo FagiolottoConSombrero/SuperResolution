@@ -5,9 +5,10 @@ from torch.utils.data import Dataset
 
 
 class SRDataset(Dataset):
-    def __init__(self, training=True, transform=None):
+    def __init__(self, training=True, input_transform=None, target_transform=None):
         self.training = training
-        self.transform = transform
+        self.input_transform = input_transform
+        self.target_transform = target_transform
 
         # Configura i percorsi in base al flag di training
         base_path = '/Volumes/Lexar/PIRM/StereoMSI/data/MultispectralSR/SR/patches'
@@ -31,7 +32,6 @@ class SRDataset(Dataset):
         return len(self.file_names)
 
     def __getitem__(self, idx):
-
         file_name = self.file_names[idx]
 
         # Percorsi dei file
@@ -43,9 +43,10 @@ class SRDataset(Dataset):
         target_image = np.load(target_path)
 
         # Applica trasformazioni se definite
-        if self.transform:
-            input_image = self.transform(input_image)
-            target_image = self.transform(target_image)
+        if self.input_transform:
+            input_image = self.input_transform(input_image)
+        if self.target_transform:
+            target_image = self.target_transform(target_image)
 
         return input_image, target_image
 
