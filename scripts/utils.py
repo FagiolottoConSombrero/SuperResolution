@@ -14,13 +14,31 @@ class SSIMLoss(nn.Module):
         super(SSIMLoss, self).__init__()
 
     def forward(self, pred, target):
+        """
+        Calculate the Structural Similarity Index (SSIM) loss.
+
+        Args:
+            pred (torch.Tensor): Predicted image, shape (B, C, H, W) or (B, C, H).
+            target (torch.Tensor): Target image, shape (B, C, H, W) or (B, C, H).
+
+        Returns:
+            torch.Tensor: 1 - mean SSIM loss.
+        """
         ssim_values = []
+        pred = pred.detach().cpu().numpy()  # Convert to NumPy
+        target = target.detach().cpu().numpy()
+
         for i in range(pred.shape[0]):  # Loop over batch
-            ssim_value = compare_ssim(pred[i].cpu().numpy().transpose(1, 2, 0),
-                                      target[i].cpu().numpy().transpose(1, 2, 0),
-                                      multichannel=True)
+            ssim_value = compare_ssim(
+                pred[i],
+                target[i],
+                data_range=pred[i].max() - pred[i].min(),  # Explicit data range
+                channel_axis=0  # Specify the channel axis
+            )
             ssim_values.append(ssim_value)
-        return 1 - torch.tensor(ssim_values, dtype=torch.float32).mean()  # SSIM ranges [0, 1]
+
+        # Return 1 - mean SSIM (since SSIM ranges [0, 1])
+        return 1 - torch.tensor(ssim_values, dtype=torch.float32).mean()
 
 
 class SAMLoss(nn.Module):
@@ -83,12 +101,17 @@ class SIDLoss(nn.Module):
         predicted = predicted / (torch.sum(predicted, dim=1, keepdim=True) + epsilon)
         target = target / (torch.sum(target, dim=1, keepdim=True) + epsilon)
 
+        # Clamp to prevent log(0)
+        predicted = torch.clamp(predicted, min=epsilon)
+        target = torch.clamp(target, min=epsilon)
+
         # Compute divergence terms
-        divergence_1 = predicted * (torch.log(predicted + epsilon) - torch.log(target + epsilon))
-        divergence_2 = target * (torch.log(target + epsilon) - torch.log(predicted + epsilon))
+        divergence_1 = predicted * (torch.log(predicted) - torch.log(target))
+        divergence_2 = target * (torch.log(target) - torch.log(predicted))
 
         # Sum along spectral channels and mean over the batch
         return torch.mean(torch.sum(divergence_1 + divergence_2, dim=1))
+
 
 
 def save_checkpoint(model, epoch):
