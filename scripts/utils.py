@@ -76,8 +76,16 @@ class MRAELoss(nn.Module):
         """
         # Add a small value to avoid division by zero
         epsilon = 1e-8
+
+        # Take the absolute value of target to avoid negative values
+        target = torch.abs(target)
+
+        # Compute relative error
         relative_error = torch.abs(predicted - target) / (target + epsilon)
+
+        # Return mean relative error
         return torch.mean(relative_error)
+
 
 
 class SIDLoss(nn.Module):
