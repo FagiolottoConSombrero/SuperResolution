@@ -74,10 +74,7 @@ class MRAELoss(nn.Module):
             torch.Tensor: MRAE loss.
         """
         # Add a small value to avoid division by zero
-        epsilon = 1e-3
-
-        # Take the absolute value of target to avoid negative values
-        target = torch.abs(target)
+        epsilon = 1e-8
 
         # Compute relative error
         relative_error = torch.abs(predicted - target) / (target + epsilon)
@@ -102,7 +99,7 @@ class SIDLoss(nn.Module):
         Returns:
             torch.Tensor: SID loss.
         """
-        epsilon = 1e-8
+        epsilon = 1e-3
 
         # Normalize along the spectral dimension (assume C is spectral channels)
         predicted = predicted / (torch.sum(predicted, dim=1, keepdim=True) + epsilon)
@@ -215,7 +212,7 @@ def get_transforms(mean, std):
         v2.ToImage(),
         v2.ToDtype(torch.float32),
         v2.Lambda(scale_0_1),
-        v2.Normalize(mean=scaled_mean, std=scaled_std)  # Applica normalizzazione
+        #v2.Normalize(mean=scaled_mean, std=scaled_std)  # Applica normalizzazione
     ])
     return basic_transforms
 
