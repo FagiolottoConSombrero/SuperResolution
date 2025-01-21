@@ -104,12 +104,12 @@ def train(train_loader,
         val_loss = validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn)
 
         print(
-            f"Train combined_loss: {train_loss[0]:.2f} | "
-            f"Train MRAE_loss: {train_loss[1]:.2f} | "
-            f"Train SID_loss: {train_loss[2]:.2f} | "
-            f"Val combined_loss: {val_loss[0]:.2f} | "
-            f"Val MRAE_loss: {val_loss[1]:.2f} | "
-            f"Val SID_loss: {val_loss[2]:.2f} | "
+            f"Train combined_loss: {train_loss[0]:.4f} | "
+            f"Train MRAE_loss: {train_loss[1]:.4f} | "
+            f"Train SID_loss: {train_loss[2]:.4f} | "
+            f"Val combined_loss: {val_loss[0]:.4f} | "
+            f"Val MRAE_loss: {val_loss[1]:.4f} | "
+            f"Val SID_loss: {val_loss[2]:.4f} | "
         )
         print("-------------\n")
 

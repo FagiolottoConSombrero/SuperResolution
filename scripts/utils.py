@@ -74,10 +74,10 @@ class MRAELoss(nn.Module):
             torch.Tensor: MRAE loss.
         """
         # Add a small value to avoid division by zero
-        epsilon = 1e-8
+        #epsilon = 1e-8
 
         # Compute relative error
-        relative_error = torch.abs(predicted - target) / (target + epsilon)
+        relative_error = torch.abs(predicted - target) / (target + 1.0/65535.0)
 
         # Return mean relative error
         return torch.mean(relative_error)
