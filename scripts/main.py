@@ -1,13 +1,9 @@
-import torch
-
-from utils import *
 from models import *
 from engine import *
 from dataset import *
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import argparse
-from torchinfo import summary
 
 parser = argparse.ArgumentParser(description='Super Resolution')
 parser.add_argument('--model', type=str, default='2', help='model id')

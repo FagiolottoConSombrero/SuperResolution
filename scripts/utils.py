@@ -3,7 +3,6 @@ import os
 import scipy.io as sio
 import torch
 from torchvision.transforms import v2
-import torch.nn.functional as F
 from skimage.metrics import structural_similarity as compare_ssim
 from torch.utils.data import DataLoader
 from torch import nn
@@ -75,7 +74,7 @@ class MRAELoss(nn.Module):
             torch.Tensor: MRAE loss.
         """
         # Add a small value to avoid division by zero
-        epsilon = 1e-8
+        epsilon = 1e-3
 
         # Take the absolute value of target to avoid negative values
         target = torch.abs(target)
