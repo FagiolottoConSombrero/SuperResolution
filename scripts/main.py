@@ -7,6 +7,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Super Resolution')
 parser.add_argument('--model', type=str, default='2', help='model id')
+parser.add_argument('--data_path', type=str, default='/Volumes/Lexar/PIRM/StereoMSI/data/MultispectralSR/SR/patches', help='Dataset path')
 parser.add_argument('--batchSize', type=int, default='32', help='Training batch size')
 parser.add_argument("--nEpochs", type=int, default=600, help="Number of epochs to train for")
 parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate. Default=0.001")
@@ -22,10 +23,10 @@ def main():
     print(opt)
 
     print("===> Loading data")
-    train_set = SRDataset(input_transform=get_input_transforms(), target_transform=get_target_transforms())
+    train_set = SRDataset(opt.data_path, input_transform=get_input_transforms(), target_transform=get_target_transforms())
     train_loader = DataLoader(dataset=train_set, batch_size=opt.batchSize, shuffle=True)
 
-    valid_set = SRDataset(training=False, input_transform=get_input_transforms(), target_transform=get_target_transforms())
+    valid_set = SRDataset(opt.data_path, training=False, input_transform=get_input_transforms(), target_transform=get_target_transforms())
     valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batchSize, shuffle=True)
 
     print("===> Building model")

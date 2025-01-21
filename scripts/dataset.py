@@ -4,13 +4,12 @@ from torch.utils.data import Dataset
 
 
 class SRDataset(Dataset):
-    def __init__(self, training=True, input_transform=None, target_transform=None):
+    def __init__(self, base_path, training=True, input_transform=None, target_transform=None):
         self.training = training
         self.input_transform = input_transform
         self.target_transform = target_transform
+        self.base_path = base_path
 
-        # Configura i percorsi in base al flag di training
-        base_path = '/Volumes/Lexar/PIRM/StereoMSI/data/MultispectralSR/SR/patches'
         if training:
             self.input_dir = os.path.join(base_path, 'train_preproced_patch')
             self.target_dir = os.path.join(base_path, 'train_demo_patch')
