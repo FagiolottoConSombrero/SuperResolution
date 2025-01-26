@@ -1,5 +1,6 @@
 from engine import *
 from dataset import *
+from models import *
 from torch.utils.data import DataLoader
 import argparse
 import numpy as np
@@ -10,6 +11,8 @@ parser.add_argument("--model", default="checkpoint/model_epoch_600.pth", type=st
 parser.add_argument("--results", default="results", type=str, help="Result save location")
 parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
                     help="Device to run the script on: 'cuda' or 'cpu'. ")
+parser.add_argument('--data_path', type=str, default='/Users/kolyszko/Downloads/pirm/hd5', help='Dataset path')
+parser.add_argument('--batchSize', type=int, default='32', help='Training batch size')
 
 
 def MSE(gt, rc):
@@ -46,7 +49,12 @@ def APPSA(gt, rc):
 
 
 def SSIM(gt, rc):
-    return compare_ssim(gt, rc)
+    return compare_ssim(
+                rc,
+                gt,
+                data_range=rc.max() - rc.min(),  # Explicit data range
+                channel_axis=0  # Specify the channel axis
+            )
 
 
 # First element is the ground truth, second is the prediction
@@ -54,13 +62,14 @@ measures = {
     'APPSA': APPSA,
     'SID' : SID,
     'PSNR': PSNR,
-    'SSIM': compare_ssim,
+    'SSIM': SSIM,
     'MSE' : MSE,
     'MRAE': MRAE
 }
 
 opt = parser.parse_args()
-model = torch.load(opt.model)
+model = LightLearningNet()
+model.load_state_dict(torch.load(opt.model, weights_only=True))
 
 valid_set = Hdf5Dataset(opt.data_path, training=False, transforms=get_transforms())
 valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batchSize, shuffle=True)
@@ -69,9 +78,9 @@ model = model.to(opt.device)
 summed_measures = None
 
 print("===> Validation")
-for iteration, (data, gt) in enumerate(valid_loader, 1):
-    data = data.to(opt.device)
-    output = model(data)
+for iteration, (x, gt) in enumerate(valid_loader, 1):
+    x = x.to(opt.device)
+    output = model(x)
 
     output = output.detach().cpu().numpy()
     output = output[0]
