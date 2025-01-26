@@ -98,6 +98,9 @@ class SIDLoss(nn.Module):
         """
         epsilon = 1e-3
 
+        predicted = torch.clamp(predicted, min=epsilon)
+        target = torch.clamp(target, min=epsilon)
+
         a1 = predicted * torch.log10((predicted + epsilon) / (target + epsilon))
         a2 = target * torch.log10((target + epsilon) / (predicted + epsilon))
 
