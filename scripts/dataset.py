@@ -1,51 +1,36 @@
 import os
 import numpy as np
 from torch.utils.data import Dataset
+import h5py
 
 
-class SRDataset(Dataset):
-    def __init__(self, base_path, training=True, input_transform=None, target_transform=None):
+class Hdf5Dataset(Dataset):
+    def __init__(self, base_path='/Users/kolyszko/Downloads/pirm/hd5', training=True, transforms=None):
+        super(Hdf5Dataset, self).__init__()
+
         self.training = training
-        self.input_transform = input_transform
-        self.target_transform = target_transform
-        self.base_path = base_path
+        self.base = base_path
+        self.transforms = transforms
 
-        if training:
-            self.input_dir = os.path.join(base_path, 'train_preproced_patch')
-            self.target_dir = os.path.join(base_path, 'train_demo_patch')
-        else:
-            self.input_dir = os.path.join(base_path, 'test_preproced_patch')
-            self.target_dir = os.path.join(base_path, 'test_demo_patch')
+        val = ''
+        if not training:
+            val = '_v'
 
-        # Lista dei file comuni a entrambe le directory, escludendo quelli che iniziano con ._
-        self.file_names = [
-            f for f in os.listdir(self.input_dir)
-            if f.endswith('.npy') and not f.startswith('._') and os.path.exists(os.path.join(self.target_dir, f))
-        ]
+        # File paths
+        self.hr_dataset = h5py.File(f'{self.base}/hr{val}.h5', 'r')['/data']
+        self.out_dataset = h5py.File(f'{self.base}/out{val}.h5', 'r')['/data']
+        self.replaced_dataset = h5py.File(f'{self.base}/replaced{val}.h5', 'r')['/data']
+        self.hr_g_dataset = h5py.File(f'{self.base}/hr_g{val}.h5', 'r')['/data']
 
-        if not self.file_names:
-            raise ValueError("Nessun file corrispondente trovato tra input e target directories.")
+    def __getitem__(self, index):
+        x, y = self.replaced_dataset[index], self.hr_dataset[index]
+        # Applica trasformazioni se definite
+        if self.transforms:
+            x = self.transforms(x)
+        if self.transforms:
+            y = self.transforms(y)
+        return x, y
 
     def __len__(self):
-        return len(self.file_names)
-
-    def __getitem__(self, idx):
-        file_name = self.file_names[idx]
-
-        # Percorsi dei file
-        input_path = os.path.join(self.input_dir, file_name)
-        target_path = os.path.join(self.target_dir, file_name)
-
-        # Caricamento delle immagini
-        input_image = np.load(input_path)
-        target_image = np.load(target_path)
-
-        # Applica trasformazioni se definite
-        if self.input_transform:
-            input_image = self.input_transform(input_image)
-        if self.target_transform:
-            target_image = self.target_transform(target_image)
-
-        return input_image, target_image
-
+        return self.hr_dataset.shape[0]
 

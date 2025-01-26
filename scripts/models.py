@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class ResidualLearningNet(nn.Module):
     def __init__(self, channels=14):
         super(ResidualLearningNet, self).__init__()
