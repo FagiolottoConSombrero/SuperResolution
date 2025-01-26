@@ -1,5 +1,3 @@
-import os
-import numpy as np
 from torch.utils.data import Dataset
 import h5py
 
