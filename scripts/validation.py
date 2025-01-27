@@ -21,8 +21,8 @@ def MSE(gt, rc):
 
 def PSNR(gt, rc):
     mse = MSE(gt, rc)
-    pmax = 65536
-    return 20 * np.log10(pmax / np.sqrt(mse + 1e-3))
+    pmax = 1
+    return 10 * np.log10(pmax **1 / mse)
 
 
 def MRAE(gt, rc):
@@ -30,31 +30,37 @@ def MRAE(gt, rc):
 
 
 def SID(gt, rc):
-    N = gt.shape[0]
-    err = np.zeros(N)
-    for i in range(N):
-        err[i] = abs(np.sum(rc[i] * np.log10((rc[i] + 1e-3) / (gt[i] + 1e-3))) +
-                     np.sum(gt[i] * np.log10((gt[i] + 1e-3) / (rc[i] + 1e-3))))
-    return err.mean()
+    epsilon = 1e-3  # puoi modificare questo valore se necessario
+    max_val = 1.209
+    gt_norm = gt / np.clip(np.sum(gt, axis=0, keepdims=True), a_min=epsilon, a_max=None)
+    rc_norm = rc / np.clip(np.sum(rc, axis=0, keepdims=True), a_min=epsilon, a_max=None)
+
+    divergence = (gt_norm * np.log(np.clip(gt_norm / rc_norm, a_min=epsilon, a_max=max_val)) +
+                  rc_norm * np.log(np.clip(rc_norm / gt_norm, a_min=epsilon, a_max=max_val)))
+    return np.mean(np.sum(divergence, axis=0))
 
 
 def APPSA(gt, rc):
-    nom = np.sum(gt * rc, axis=0)
-    denom = np.linalg.norm(gt, axis=0) * np.linalg.norm(rc, axis=0)
+    dot_product = np.sum(gt * rc, axis=0)
+    norm_gt = np.sqrt(np.sum(gt ** 2, axis=0))
+    norm_pred = np.sqrt(np.sum(rc ** 2, axis=0))
 
-    cos = np.where((nom / (denom + 1e-3)) > 1, 1, (nom / (denom + 1e-3)))
-    appsa = np.arccos(cos)
-
-    return np.sum(appsa) / (gt.shape[1] * gt.shape[0])
+    cos_theta = np.clip(dot_product / (norm_gt * norm_pred + 1e-6), -1, 1)
+    spectral_agle = np.arccos(cos_theta)
+    return np.mean(spectral_agle)
 
 
 def SSIM(gt, rc):
-    return compare_ssim(
-                rc,
-                gt,
-                data_range=rc.max() - rc.min(),  # Explicit data range
+    ssim_values = []
+    for i in range(gt.shape[0]):
+        ssim_value = compare_ssim(
+                rc[i],
+                gt[i],
+                data_range=rc[i].max() - rc[i].min(),  # Explicit data range
                 channel_axis=0  # Specify the channel axis
             )
+        ssim_values.append(ssim_value)
+    return np.mean(ssim_values)
 
 
 # First element is the ground truth, second is the prediction
@@ -71,6 +77,7 @@ opt = parser.parse_args()
 model = LightLearningNet()
 model.load_state_dict(torch.load(opt.model, weights_only=True))
 
+
 valid_set = Hdf5Dataset(opt.data_path, training=False, transforms=get_transforms())
 valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batchSize, shuffle=True)
 
@@ -81,14 +88,12 @@ print("===> Validation")
 for iteration, (x, gt) in enumerate(valid_loader, 1):
     x = x.to(opt.device)
     output = model(x)
-
     output = output.detach().cpu().numpy()
-    output = output[0]
+    gt = gt.detach().cpu().numpy()
 
     hr_measures = {k: np.array(func(gt, output)) for (k, func) in measures.items()}
 
     print("===> Image %d" % iteration)
-    print(hr_measures)
 
     if summed_measures is None:
         summed_measures = hr_measures
