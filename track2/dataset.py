@@ -17,18 +17,18 @@ class Hdf5Dataset(Dataset):
         # File paths
         self.hr_dataset = h5py.File(f'{self.base}/hr{val}.h5', 'r')['/data']
         self.out_dataset = h5py.File(f'{self.base}/out{val}.h5', 'r')['/data']
-        self.replaced_dataset = h5py.File(f'{self.base}/replaced{val}.h5', 'r')['/data']
-        self.hr_g_dataset = h5py.File(f'{self.base}/hr_g{val}.h5', 'r')['/data']
+        self.tif_dataset = h5py.File(f'{self.base}/tif{val}.h5', 'r')['/data']
 
     def __getitem__(self, index):
-        x, y = self.replaced_dataset[index], self.hr_dataset[index]
+        x, tif, y = self.out_dataset[index], self.tif_dataset[index], self.hr_dataset[index]
         # Applica trasformazioni se definite
         if self.transforms:
             x = self.transforms(x)
         if self.transforms:
+            tif = self.transforms(tif)
+        if self.transforms:
             y = self.transforms(y)
-        return x, y
+        return x, tif, y
 
     def __len__(self):
         return self.hr_dataset.shape[0]
-

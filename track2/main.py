@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import argparse
 
+
 parser = argparse.ArgumentParser(description='Super Resolution')
 parser.add_argument('--model', type=str, default='2', help='model id')
 parser.add_argument('--data_path', type=str, default='', help='Dataset path')
@@ -31,9 +32,9 @@ def main():
 
     print("===> Building model")
     if opt.model == '1':
-        model = LightLearningNet()
+        model = SecondLightResidualNet()
     elif opt.model == '2':
-        model = ResidualLearningNet()
+        model = SecondResidualNet()
     model = model.to(opt.device)
     mrae = MRAELoss()
     sid = SIDLoss()
@@ -56,10 +57,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
