@@ -55,8 +55,8 @@ class LightLearningNet(nn.Module):
     def __init__(self, channels=14):
         super(LightLearningNet, self).__init__()
         self.residual_layer = self.make_layer(10)  # Ridotto a 6 layer per efficienza
-        self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=128, kernel_size=3, stride=1, padding=1)
-        self.output = nn.Conv2d(in_channels=128, out_channels=channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.output = nn.Conv2d(in_channels=64, out_channels=channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.relu = nn.ReLU(inplace=True)
 
         for m in self.modules():
@@ -66,7 +66,7 @@ class LightLearningNet(nn.Module):
     def make_layer(self, count):
         layers = []
         for _ in range(count):
-            layers.append(DepthwiseSeparableConv(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1))
+            layers.append(DepthwiseSeparableConv(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1))
             layers.append(nn.ReLU(inplace=True))
         return nn.Sequential(*layers)
 
