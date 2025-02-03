@@ -85,9 +85,10 @@ model = model.to(opt.device)
 summed_measures = None
 
 print("===> Validation")
-for iteration, (x, gt) in enumerate(valid_loader, 1):
+for iteration, (x, tif, gt) in enumerate(valid_loader, 1):
     x = x.to(opt.device)
-    output = model(x)
+    tif = tif.to(opt.device)
+    output = model(x, tif)
     output = output.detach().cpu().numpy()
     gt = gt.detach().cpu().numpy()
 
