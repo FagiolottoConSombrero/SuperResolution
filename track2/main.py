@@ -5,8 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import argparse
 
-
-parser = argparse.ArgumentParser(description='Super Resolution')
+parser = argparse.ArgumentParser(description='Super Resolution task 2')
 parser.add_argument('--model', type=str, default='2', help='model id')
 parser.add_argument('--data_path', type=str, default='', help='Dataset path')
 parser.add_argument('--batchSize', type=int, default='32', help='Training batch size')

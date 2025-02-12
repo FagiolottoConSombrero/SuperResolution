@@ -48,6 +48,35 @@ class SecondLightResidualNet(nn.Module):
         return out
 
 
+# ResidualLearningNet con Depthwise Separable Convolutions
+class LightLearningNet(nn.Module):
+    def __init__(self, channels=14):
+        super(LightLearningNet, self).__init__()
+        self.residual_layer = self.make_layer(10)  # Ridotto a 6 layer per efficienza
+        self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=128, kernel_size=3, stride=1, padding=1)
+        self.output = nn.Conv2d(in_channels=128, out_channels=channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.relu = nn.ReLU(inplace=True)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
+
+    def make_layer(self, count):
+        layers = []
+        for _ in range(count):
+            layers.append(DepthwiseSeparableConv(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1))
+            layers.append(nn.ReLU(inplace=True))
+        return nn.Sequential(*layers)
+
+    def forward(self, x2):
+        residual = x2
+        out = self.relu(self.input(x2))
+        out = self.residual_layer(out)
+        out = self.output(out)
+        out = torch.add(out, residual)
+        return out
+
+
 class SecondResidualNet(nn.Module):
     def __init__(self, channels=14):
         super(SecondResidualNet, self).__init__()
