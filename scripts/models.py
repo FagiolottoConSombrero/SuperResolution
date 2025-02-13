@@ -80,7 +80,7 @@ class LightLearningNet(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, dim, num_heads=3, mlp_ratio=3.0):
+    def __init__(self, dim, num_heads=2, mlp_ratio=2.0):
         super(TransformerBlock, self).__init__()
         self.norm1 = nn.LayerNorm(dim)
         self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
@@ -106,7 +106,7 @@ class TransformerBlock(nn.Module):
 
 
 class Tnet(nn.Module):
-    def __init__(self, channels=14, hidden_dim=18, num_transformers=2):
+    def __init__(self, channels=14, hidden_dim=16, num_transformers=2):
         super(Tnet, self).__init__()
         self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=hidden_dim, kernel_size=3, stride=1,
                                             padding=1)
