@@ -18,6 +18,8 @@ parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_availa
 
 
 def main():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
     global model
     opt = parser.parse_args()
     print(opt)
