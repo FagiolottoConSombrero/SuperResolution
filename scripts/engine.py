@@ -19,34 +19,36 @@ def training_step(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss
 
     for batch, (X, y) in enumerate(loop):
         # Send data to GPU
-        X, y = X.to(device), y.to(device)
+        X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
 
         # Forward Pass
         y_pred = model(X)
 
-        # Calculate structural similarity index loss
+        # Calculate losses
         loss_1 = ssim_loss_fn(y_pred, y)
-        ssim_loss_total += loss_1.item()
-
-        # Calculate spectral angle mapper loss
         loss_2 = sam_loss_fn(y_pred, y)
-        sam_loss_total += loss_2.item()
-
         loss = loss_1 + loss_2
+
+        # Accumulate loss
+        ssim_loss_total += loss_1.item()
+        sam_loss_total += loss_2.item()
         combined_loss_total += loss.item()
 
-        # Optimizer reset step
+        # Backpropagation
         optimizer.zero_grad()
-
-        # Loss Backpropagation
         loss.backward()
-
-        # Optimizer step
         optimizer.step()
 
+        # **Libera memoria per evitare il CUDA Out Of Memory**
+        del X, y, y_pred, loss, loss_1, loss_2  # Cancella i tensori per liberare memoria
+        torch.cuda.empty_cache()  # Libera la cache di PyTorch
+        torch.cuda.ipc_collect()  # Ottimizza l'allocazione della memoria
+
+    # Calcola le medie delle perdite
     combined_loss_total /= len(train_loader)
     ssim_loss_total /= len(train_loader)
     sam_loss_total /= len(train_loader)
+
     return combined_loss_total, ssim_loss_total, sam_loss_total
 
 
@@ -59,20 +61,25 @@ def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
 
     with torch.inference_mode():
         for batch, (X, y) in enumerate(loop):
-            X, y = X.to(device), y.to(device)
+            X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_pred = model(X)
 
-            # Calculate structural similarity index loss
+            # Calculate losses
             loss_1 = ssim_loss_fn(y_pred, y)
-            ssim_loss_total += loss_1.item()
-
-            # Calculate spectral angle mapper loss
             loss_2 = sam_loss_fn(y_pred, y)
-            sam_loss_total += loss_2.item()
-
             loss = loss_1 + loss_2
+
+            # Accumulate loss
+            ssim_loss_total += loss_1.item()
+            sam_loss_total += loss_2.item()
             combined_loss_total += loss.item()
 
+            # **Libera memoria per evitare il CUDA Out Of Memory**
+            del X, y, y_pred, loss, loss_1, loss_2
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
+    # Calcola le medie delle perdite
     combined_loss_total /= len(val_loader)
     ssim_loss_total /= len(val_loader)
     sam_loss_total /= len(val_loader)
@@ -113,12 +120,13 @@ def train(train_loader,
         )
         print("-------------\n")
 
+        # **Libera memoria dopo ogni epoca**
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
         if check_early_stopping(val_loss[0], model, early_stopping, epoch, best_model_path):
             break
 
     # Ripristina i pesi migliori
     model.load_state_dict(torch.load(best_model_path))
     print(f"Restored best model weights with val_loss: {early_stopping.best_val:.4f}")
-
-
-

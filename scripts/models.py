@@ -106,7 +106,7 @@ class TransformerBlock(nn.Module):
 
 
 class Tnet(nn.Module):
-    def __init__(self, channels=14, hidden_dim=30, num_transformers=2):
+    def __init__(self, channels=14, hidden_dim=18, num_transformers=2):
         super(Tnet, self).__init__()
         self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=hidden_dim, kernel_size=3, stride=1,
                                             padding=1)
