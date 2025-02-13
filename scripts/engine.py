@@ -1,3 +1,4 @@
+import torch
 from tqdm import tqdm
 from utils import *
 
@@ -59,7 +60,7 @@ def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
     combined_loss_total = 0
     loop = tqdm(val_loader, desc="Validation", leave=True)
 
-    with torch.inference_mode():
+    with torch.no_grad():
         for batch, (X, y) in enumerate(loop):
             X, y = X.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_pred = model(X)
