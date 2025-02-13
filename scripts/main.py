@@ -33,7 +33,7 @@ def main():
     if opt.model == '1':
         model = LightLearningNet()
     elif opt.model == '2':
-        model = Tnet()
+        model = ResidualLearningNet()
     model = model.to(opt.device)
     mrae = MRAELoss()
     sid = SIDLoss()

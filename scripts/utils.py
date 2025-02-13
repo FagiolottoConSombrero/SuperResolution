@@ -144,7 +144,7 @@ class EarlyStopping():
     """
     stop the training when the loss does not improve.
     """
-    def __init__(self, patience=20, mode='min'):
+    def __init__(self, patience=50, mode='min'):
         if mode not in ['min', 'max']:
             raise ValueError("Early-stopping mode not supported")
         self.patience = patience
