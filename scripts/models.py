@@ -5,7 +5,7 @@ import torch.nn as nn
 class ResidualLearningNet(nn.Module):
     def __init__(self, channels=14):
         super(ResidualLearningNet, self).__init__()
-        self.residual_layer = self.make_layer(10)
+        self.residual_layer = self.make_layer(5)
 
         self.input = nn.Conv2d(in_channels=channels, out_channels=64,
                                kernel_size=3, stride=1, padding=1, bias=False)
