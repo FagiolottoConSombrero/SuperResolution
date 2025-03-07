@@ -97,7 +97,7 @@ class ResidualBlock(nn.Module):
 
 
 class SRNet(nn.Module):
-    def __init__(self, channels=14, num_residual_blocks=10):
+    def __init__(self, channels=14, num_residual_blocks=5):
         super(SRNet, self).__init__()
 
         self.input = nn.Conv2d(in_channels=channels, out_channels=64,
