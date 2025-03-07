@@ -122,7 +122,7 @@ class SRNet(nn.Module):
 
     def forward(self, x):
         residual = x
-        out = self.relu(self.bn_input(self.input(x)))  # Normalizzazione dopo il primo strato
+        out = self.leaky_relu(self.bn_input(self.input(x)))  # Normalizzazione dopo il primo strato
         out = self.residual_layer(out)
         out = self.output(out)
         out = torch.add(out, residual)  # Residual connection globale
