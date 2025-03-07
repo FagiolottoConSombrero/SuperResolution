@@ -93,7 +93,7 @@ class ResidualBlock(nn.Module):
         out = self.leaky_relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out += residual  # Residual connection
-        return self.relu(out)
+        return self.leaky_relu(out)
 
 
 class SRNet(nn.Module):
