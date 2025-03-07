@@ -79,62 +79,51 @@ class LightLearningNet(nn.Module):
         return out
 
 
-class TransformerBlock(nn.Module):
-    def __init__(self, dim, num_heads=2, mlp_ratio=2.0):
-        super(TransformerBlock, self).__init__()
-        self.norm1 = nn.LayerNorm(dim)
-        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
-        self.norm2 = nn.LayerNorm(dim)
-        self.mlp = nn.Sequential(
-            nn.Linear(dim, int(dim * mlp_ratio)),
-            nn.ReLU(inplace=True),
-            nn.Linear(int(dim * mlp_ratio), dim)
-        )
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.conv2 = nn.Conv2d(channels, channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(channels)
 
     def forward(self, x):
-        B, C, H, W = x.shape
-        x = x.view(B, C, -1).permute(0, 2, 1)  # Reshape to (B, H*W, C) for MHSA
-        x = self.norm1(x)
-        attn_output, _ = self.attn(x, x, x)
-        x = x + attn_output  # Residual connection
-
-        x = self.norm2(x)
-        x = x + self.mlp(x)  # Residual connection with FFN
-
-        x = x.permute(0, 2, 1).view(B, C, H, W)  # Back to (B, C, H, W)
-        return x
+        residual = x
+        out = self.leaky_relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += residual  # Residual connection
+        return self.relu(out)
 
 
-class Tnet(nn.Module):
-    def __init__(self, channels=14, hidden_dim=16, num_transformers=2):
-        super(Tnet, self).__init__()
-        self.input = DepthwiseSeparableConv(in_channels=channels, out_channels=hidden_dim, kernel_size=3, stride=1,
-                                            padding=1)
-        self.residual_layer = self.make_layer(10, hidden_dim)  # Ridotto a 6 layer per efficienza
-        self.transformer_blocks = nn.Sequential(*[TransformerBlock(hidden_dim) for _ in range(num_transformers)])
-        self.output = nn.Conv2d(in_channels=hidden_dim, out_channels=channels, kernel_size=3, stride=1, padding=1,
-                                bias=False)
-        self.relu = nn.ReLU(inplace=True)
+class SRNet(nn.Module):
+    def __init__(self, channels=14, num_residual_blocks=10):
+        super(SRNet, self).__init__()
 
+        self.input = nn.Conv2d(in_channels=channels, out_channels=64,
+                               kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn_input = nn.BatchNorm2d(64)  # Normalizzazione iniziale
+        self.leaky_relu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+
+        # Strato Residuale composto da blocchi con connessioni residuali
+        self.residual_layer = self.make_layer(num_residual_blocks)
+
+        self.output = nn.Conv2d(in_channels=64, out_channels=channels,
+                                kernel_size=3, stride=1, padding=1, bias=False)
+
+        # Inizializzazione Xavier per le convoluzioni
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
 
-    def make_layer(self, count, hidden_dim):
-        layers = []
-        for _ in range(count):
-            layers.append(
-                DepthwiseSeparableConv(in_channels=hidden_dim, out_channels=hidden_dim, kernel_size=3, stride=1,
-                                       padding=1))
-            layers.append(nn.ReLU(inplace=True))
+    def make_layer(self, count):
+        layers = [ResidualBlock(64) for _ in range(count)]
         return nn.Sequential(*layers)
 
     def forward(self, x):
         residual = x
-        out = self.relu(self.input(x))
+        out = self.relu(self.bn_input(self.input(x)))  # Normalizzazione dopo il primo strato
         out = self.residual_layer(out)
-        out = self.transformer_blocks(out)  # Aggiunto il Transformer Block
         out = self.output(out)
-        out = torch.add(out, residual)  # Residual connection
+        out = torch.add(out, residual)  # Residual connection globale
         return out
-
