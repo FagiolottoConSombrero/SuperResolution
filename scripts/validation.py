@@ -30,13 +30,18 @@ def MRAE(gt, rc):
 
 
 def SID(gt, rc):
-    epsilon = 1e-3  # puoi modificare questo valore se necessario
-    max_val = 1
-    gt_norm = gt / np.clip(np.sum(gt, axis=0, keepdims=True), a_min=epsilon, a_max=None)
-    rc_norm = rc / np.clip(np.sum(rc, axis=0, keepdims=True), a_min=epsilon, a_max=None)
+    epsilon = 1e-6  # Ridotto per evitare distorsioni
+    gt_sum = np.sum(gt, axis=0, keepdims=True)
+    rc_sum = np.sum(rc, axis=0, keepdims=True)
 
-    divergence = (gt_norm * np.log(np.clip(gt_norm / rc_norm, a_min=epsilon, a_max=max_val)) +
-                  rc_norm * np.log(np.clip(rc_norm / gt_norm, a_min=epsilon, a_max=max_val)))
+    gt_norm = gt / np.clip(gt_sum, a_min=epsilon, a_max=None)
+    rc_norm = rc / np.clip(rc_sum, a_min=epsilon, a_max=None)
+
+    ratio1 = np.clip(gt_norm / rc_norm, a_min=epsilon, a_max=None)
+    ratio2 = np.clip(rc_norm / gt_norm, a_min=epsilon, a_max=None)
+
+    divergence = (gt_norm * np.log(ratio1) + rc_norm * np.log(ratio2))
+
     return np.mean(np.sum(divergence, axis=0))
 
 
