@@ -102,4 +102,5 @@ for iteration, (x, gt) in enumerate(valid_loader, 1):
 
 summed_measures = {k: v / len(valid_loader) for (k, v) in summed_measures.items()}
 print('Average Measures')
-print(summed_measures)
+for key, value in summed_measures.items():
+    print(f"{key}: {value:.6f}")
