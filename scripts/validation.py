@@ -22,7 +22,7 @@ def MSE(gt, rc):
 def PSNR(gt, rc):
     mse = MSE(gt, rc)
     pmax = 1
-    return 10 * np.log10(pmax **1 / mse)
+    return 10 * np.log10(pmax ** 2 / mse)
 
 
 def MRAE(gt, rc):
