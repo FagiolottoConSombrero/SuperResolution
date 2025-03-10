@@ -74,7 +74,7 @@ measures = {
 }
 
 opt = parser.parse_args()
-model = LightLearningNet()
+model = SRNet()
 model.load_state_dict(torch.load(opt.model, weights_only=True))
 
 
