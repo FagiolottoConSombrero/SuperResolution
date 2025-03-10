@@ -31,7 +31,7 @@ def MRAE(gt, rc):
 
 def SID(gt, rc):
     epsilon = 1e-3  # puoi modificare questo valore se necessario
-    max_val = 1.209
+    max_val = 1
     gt_norm = gt / np.clip(np.sum(gt, axis=0, keepdims=True), a_min=epsilon, a_max=None)
     rc_norm = rc / np.clip(np.sum(rc, axis=0, keepdims=True), a_min=epsilon, a_max=None)
 
