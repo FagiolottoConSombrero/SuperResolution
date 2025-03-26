@@ -3,38 +3,22 @@ import torch
 from torchvision.transforms import v2
 from skimage.metrics import structural_similarity as compare_ssim
 from torch import nn
+from pytorch_msssim import ssim
 
 
 class SSIMLoss(nn.Module):
-    def __init__(self):
+    """
+    Structural Similarity (SSIM) Loss.
+    Utilizza pytorch_msssim per calcolare la similarità strutturale tra predizione e target.
+    La loss è definita come (1 - SSIM), in modo da essere minimizzata.
+    """
+    def __init__(self, normalize=True):
         super(SSIMLoss, self).__init__()
 
     def forward(self, pred, target):
-        """
-        Calculate the Structural Similarity Index (SSIM) loss.
-
-        Args:
-            pred (torch.Tensor): Predicted image, shape (B, C, H, W) or (B, C, H).
-            target (torch.Tensor): Target image, shape (B, C, H, W) or (B, C, H).
-
-        Returns:
-            torch.Tensor: 1 - mean SSIM loss.
-        """
-        ssim_values = []
-        pred = pred.detach().cpu().numpy()  # Convert to NumPy
-        target = target.detach().cpu().numpy()
-
-        for i in range(pred.shape[0]):  # Loop over batch
-            ssim_value = compare_ssim(
-                pred[i],
-                target[i],
-                data_range=pred[i].max() - pred[i].min(),  # Explicit data range
-                channel_axis=0  # Specify the channel axis
-            )
-            ssim_values.append(ssim_value)
-
-        # Return 1 - mean SSIM (since SSIM ranges [0, 1])
-        return 1 - torch.tensor(ssim_values, dtype=torch.float32).mean()
+        # SSIM restituisce un valore in [0, 1]; 1 = immagini identiche
+        ssim_value = ssim(pred, target)
+        return 1 - ssim_value  # Più simile sono, più la loss si avvicina a 0
 
 
 class SAMLoss(nn.Module):
@@ -42,17 +26,12 @@ class SAMLoss(nn.Module):
         super(SAMLoss, self).__init__()
 
     def forward(self, pred, target):
-        # Flatten the spectral data
-        pred = pred.view(pred.shape[0], -1, pred.shape[-1])  # (Batch, Pixels, Channels)
-        target = target.view(target.shape[0], -1, target.shape[-1])  # (Batch, Pixels, Channels)
+        dot_product = torch.sum(pred * target, dim=1)
+        norm_pred = torch.norm(pred, p=2, dim=1)
+        norm_target = torch.norm(target, p=2, dim=1)
+        angle = torch.acos(dot_product / (norm_pred * norm_target + 1e-8))
 
-        dot_product = torch.sum(pred * target, dim=-1)
-        pred_norm = torch.norm(pred, dim=-1)
-        target_norm = torch.norm(target, dim=-1)
-        cos_theta = dot_product / (pred_norm * target_norm + 1e-8)
-        sam_angle = torch.acos(torch.clamp(cos_theta, -1, 1))  # Ensure values are in valid range
-
-        return sam_angle.mean()
+        return torch.mean(angle)
 
 
 class MRAELoss(nn.Module):

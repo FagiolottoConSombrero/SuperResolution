@@ -5,13 +5,15 @@ from torch.utils.data import DataLoader
 import argparse
 import numpy as np
 from skimage.metrics import structural_similarity as compare_ssim
+import tifffile as tiff
+import os
 
 parser = argparse.ArgumentParser(description='Super Resolution')
 parser.add_argument("--model", default="checkpoint/model_epoch_600.pth", type=str, help="model path")
 parser.add_argument("--results", default="results", type=str, help="Result save location")
 parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu",
                     help="Device to run the script on: 'cuda' or 'cpu'. ")
-parser.add_argument('--data_path', type=str, default='/Users/kolyszko/Downloads/pirm/hd5', help='Dataset path')
+parser.add_argument('--data_path', type=str, default='/home/matteo/Downloads/pirm/hd5', help='Dataset path')
 parser.add_argument('--batchSize', type=int, default='32', help='Training batch size')
 
 
@@ -73,16 +75,19 @@ measures = {
     'MRAE': MRAE
 }
 
-opt = parser.parse_args()
-model = SRNet()
-model.load_state_dict(torch.load(opt.model, weights_only=True))
+# Dizionario per memorizzare il miglior valore e l'indice della migliore immagine per ogni metrica
+best_measures = {k: (np.inf if k in ['MSE', 'SID', 'MRAE', 'APPSA'] else -np.inf, -1) for k in measures}
 
+opt = parser.parse_args()
+model = SPAN(14, 14)
+model.load_state_dict(torch.load(opt.model, weights_only=True))
 
 valid_set = Hdf5Dataset(opt.data_path, training=False, transforms=get_transforms())
 valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batchSize, shuffle=True)
 
 model = model.to(opt.device)
 summed_measures = None
+save_dir = "/home/matteo/PycharmProjects/SuperResolution/data/track_1"
 
 print("===> Validation")
 for iteration, (x, gt) in enumerate(valid_loader, 1):
@@ -93,14 +98,39 @@ for iteration, (x, gt) in enumerate(valid_loader, 1):
 
     hr_measures = {k: np.array(func(gt, output)) for (k, func) in measures.items()}
 
-    print("===> Image %d" % iteration)
+    print(f"\n===== Image {iteration} =====")
+    for key, value in hr_measures.items():
+        print(f"{key} (original): {np.mean(value):.6f}")  # Stampa media per evitare array multipli
+
+    # Salvataggio delle immagini in formato TIFF
+    gt_filename = os.path.join(save_dir, f"GT_{iteration:03d}.tif")
+    sr_filename = os.path.join(save_dir, f"SR_{iteration:03d}.tif")
+
+    tiff.imwrite(gt_filename, gt.astype(np.float32), dtype=np.float32)
+    tiff.imwrite(sr_filename, output.astype(np.float32), dtype=np.float32)
+
+    print(f"Immagini salvate: {gt_filename}, {sr_filename}")
 
     if summed_measures is None:
         summed_measures = hr_measures
     else:
         summed_measures = {k: v + hr_measures[k] for (k, v) in summed_measures.items()}
 
+    # Controlliamo il miglior caso per ogni metrica
+    for k, v in hr_measures.items():
+        best_value, best_index = best_measures[k]
+        if (k in ['PSNR', 'SSIM'] and v > best_value) or (k in ['MSE', 'SID', 'MRAE', 'APPSA'] and v < best_value):
+            best_measures[k] = (v, iteration)
+
+# Calcolo della media
 summed_measures = {k: v / len(valid_loader) for (k, v) in summed_measures.items()}
-print('Average Measures')
+
+# Stampiamo le medie
+print("\n===== Average Measures =====")
 for key, value in summed_measures.items():
     print(f"{key}: {value:.6f}")
+
+# Stampiamo i migliori casi
+print("\n===== Best Cases =====")
+for key, (value, index) in best_measures.items():
+    print(f"{key}: {value:.6f} (Image {index})")

@@ -39,7 +39,7 @@ def training_step(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss
         optimizer.zero_grad()
 
         # Loss Backpropagation
-        loss.backward()
+        loss_1.backward()
 
         # Optimizer step
         optimizer.step()
@@ -48,6 +48,36 @@ def training_step(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss
     ssim_loss_total /= len(train_loader)
     sam_loss_total /= len(train_loader)
     return combined_loss_total, ssim_loss_total, sam_loss_total
+
+
+def training_step_2(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss_fn):
+    model.train()
+    total_loss = 0
+    loop = tqdm(train_loader, desc="Training", leave=True, dynamic_ncols=True)
+
+    for batch, (X, tif, y) in enumerate(loop):
+        # Send data to GPU
+        X, tif, y = X.to(device), tif.to(device), y.to(device)
+
+        # Forward Pass
+        y_pred = model(X, tif)
+
+        # Calculate structural similarity index loss
+        loss_1 = ssim_loss_fn(y_pred, y)
+        total_loss += loss_1.item()
+
+        # Optimizer reset step
+        optimizer.zero_grad()
+
+        # Loss Backpropagation
+        loss_1.backward()
+
+        # Optimizer step
+        optimizer.step()
+
+
+    total_loss /= len(train_loader)
+    return total_loss
 
 
 def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
@@ -78,6 +108,25 @@ def validation_step(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
     sam_loss_total /= len(val_loader)
 
     return combined_loss_total, ssim_loss_total, sam_loss_total
+
+
+def validation_step_2(val_loader, model, device, ssim_loss_fn, sam_loss_fn):
+    model.eval()
+    total_loss = 0
+    loop = tqdm(val_loader, desc="Validation", leave=True)
+
+    with torch.inference_mode():
+        for batch, (X, tif, y) in enumerate(loop):
+            X, tif, y = X.to(device), tif.to(device), y.to(device)
+            y_pred = model(X, tif)
+
+            # Calculate structural similarity index loss
+            loss_1 = ssim_loss_fn(y_pred, y)
+            total_loss += loss_1.item()
+
+    total_loss /= len(val_loader)
+
+    return total_loss
 
 
 def train(train_loader,
@@ -114,6 +163,43 @@ def train(train_loader,
         print("-------------\n")
 
         if check_early_stopping(val_loss[0], model, early_stopping, epoch, best_model_path):
+            break
+
+    # Ripristina i pesi migliori
+    model.load_state_dict(torch.load(best_model_path))
+    print(f"Restored best model weights with val_loss: {early_stopping.best_val:.4f}")
+
+
+def train_2(train_loader,
+          val_loader,
+          model,
+          epochs,
+          optimizer,
+          device,
+          best_model_path,
+          ssim_loss_fn,
+          sam_loss_fn,
+          initial_lr,
+          patience=20):
+    early_stopping = EarlyStopping(patience=patience, mode='min')
+
+    for epoch in tqdm(range(epochs), desc="All"):
+        # Adjust learning rate
+        current_lr = adjust_learning_rate(optimizer, epoch, initial_lr)
+        print(f"Epoch: {epoch}, Learning Rate: {current_lr:.6f}\n-----------")
+        for param_group in optimizer.param_groups:
+            param_group["lr"] = current_lr
+
+        train_loss = training_step_2(train_loader, model, optimizer, device, ssim_loss_fn, sam_loss_fn)
+        val_loss = validation_step_2(val_loader, model, device, ssim_loss_fn, sam_loss_fn)
+
+        print(
+            f"Train MRAE_loss: {train_loss:.4f} | "
+            f"Val MRAE_loss: {val_loss:.4f} | "
+        )
+        print("-------------\n")
+
+        if check_early_stopping(val_loss, model, early_stopping, epoch, best_model_path):
             break
 
     # Ripristina i pesi migliori

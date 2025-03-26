@@ -8,8 +8,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Super Resolution')
 parser.add_argument('--model', type=str, default='2', help='model id')
 parser.add_argument('--data_path', type=str, default='', help='Dataset path')
-parser.add_argument('--batchSize', type=int, default='32', help='Training batch size')
-parser.add_argument("--nEpochs", type=int, default=600, help="Number of epochs to train for")
+parser.add_argument('--batch_size', type=int, default='32', help='Training batch size')
+parser.add_argument("--epochs", type=int, default=600, help="Number of epochs to train for")
 parser.add_argument("--lr", type=float, default=0.001, help="Learning Rate. Default=0.001")
 parser.add_argument('--save_path', type=str,
                     default='', help="Path to model checkpoint")
@@ -24,16 +24,20 @@ def main():
 
     print("===> Loading data")
     train_set = Hdf5Dataset(opt.data_path, training=True, transforms=get_transforms())
-    train_loader = DataLoader(dataset=train_set, batch_size=opt.batchSize, shuffle=True)
+    train_loader = DataLoader(dataset=train_set, batch_size=opt.batch_size, shuffle=True)
 
     valid_set = Hdf5Dataset(opt.data_path, training=False, transforms=get_transforms())
-    valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batchSize, shuffle=True)
+    valid_loader = DataLoader(dataset=valid_set, batch_size=opt.batch_size, shuffle=True)
 
     print("===> Building model")
     if opt.model == '1':
         model = LightLearningNet()
     elif opt.model == '2':
         model = SRNet()
+    elif opt.model == '3':
+        model = SPAN(14, 14)
+    elif opt.model == '4':
+        model = Spec_SPAN(14, 14, feature_channels=32)
     model = model.to(opt.device)
     mrae = MRAELoss()
     sid = SIDLoss()
@@ -45,7 +49,7 @@ def main():
     train(train_loader,
           valid_loader,
           model,
-          opt.nEpochs,
+          opt.epochs,
           optimizer,
           opt.device,
           opt.save_path,

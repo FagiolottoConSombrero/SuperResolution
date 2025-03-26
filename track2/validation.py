@@ -1,11 +1,12 @@
 import glob
-import matplotlib.pyplot as plt
 from dataset import *
 from models import *
 from torch.autograd import Variable
 import argparse
 import numpy as np
 from skimage.metrics import structural_similarity as compare_ssim
+import tifffile as tiff
+import os
 
 parser = argparse.ArgumentParser(description='Eval Script')
 parser.add_argument('--first_model', type=str, default='', help='task 1 model')
@@ -89,12 +90,13 @@ measures = {
 }
 
 opt = parser.parse_args()
-model_1 = LightLearningNet()
+model_1 = SPAN(14, 14)
 model_1.load_state_dict(torch.load(opt.first_model, map_location=torch.device('cpu'), weights_only=True))
-model_2 = SecondLightResidualNet()
+model_2 = SPAN_2(15, 14)
 model_2.load_state_dict(torch.load(opt.second_model, map_location=torch.device('cpu'), weights_only=True))
 
-val_images = glob.glob('/Users/kolyszko/Downloads/pirm/test_data/*.h5')
+val_images = glob.glob('/home/matteo/Downloads/pirm/task_2/test_task_2/*.h5')
+save_dir = "/home/matteo/PycharmProjects/SuperResolution/data/track_2"
 
 model_1 = model_1.to(opt.device)
 model_2 = model_2.to(opt.device)
@@ -103,6 +105,13 @@ model_2.eval()
 summed_measures = None
 
 print("====> Validation")
+
+# Dizionario per tracciare i migliori risultati
+best_measures = {k: (np.inf if k in ['MSE', 'SID', 'MRAE', 'APPSA'] else -np.inf, -1) for k in measures}
+
+summed_measures = None
+origin_summed = None
+
 for iteration, h5pyfilename in enumerate(val_images, 1):
 
     image = h5py.File(h5pyfilename, 'r')['data'][:] / 65535.0
@@ -129,43 +138,58 @@ for iteration, h5pyfilename in enumerate(val_images, 1):
 
     output[:, :, 1::2, 1::2] = image[:, :, 1::2, 1::2]
     output[:, :, 1::3, 1::3] = image[:, :, 1::3, 1::3]
-    output1 = output1[0] #* 65535.0
-    output = output[0] #* 65535.0
-    gt = image_hr[0].numpy()  # / 65535.0
+    output1 = output1[0]
+    output = output[0]
+    gt = image_hr[0].numpy()
 
-    '''gt_first_band = gt[0, :, :]
-    output_first_band = output1[0, :, :]
-
-    # Visualizza le immagini affiancate
-    plt.figure(figsize=(10, 5))
-
-    # Plot per gt
-    plt.subplot(1, 2, 1)
-    plt.imshow(gt_first_band.T, cmap='gray')
-    plt.title("GT - Prima banda")
-    plt.axis('off')
-
-    # Plot per output
-    plt.subplot(1, 2, 2)
-    plt.imshow(output_first_band.T, cmap='gray')
-    plt.title("Output - Prima banda")
-    plt.axis('off')
-
-    plt.tight_layout()
-    plt.show()'''
-
-
+    # Calcolo delle metriche
     hr_measures = {k: np.array(func(gt, output)) for (k, func) in measures.items()}
     origin_measures = {k: np.array(func(gt, output1)) for (k, func) in measures.items()}
 
-    print("===> Image %d" % iteration)
+    print(f"\n===== Image {iteration} =====")
+    for key, value in hr_measures.items():
+        print(f"{key} (SR): {np.mean(value):.6f}")  # Stampa media per evitare array multipli
+    for key, value in origin_measures.items():
+        print(f"{key} (original): {np.mean(value):.6f}")
 
+    # Salvataggio delle immagini in formato TIFF
+    gt_filename = os.path.join(save_dir, f"GT_{iteration:03d}.tif")
+    sr_filename = os.path.join(save_dir, f"SR_{iteration:03d}.tif")
+
+    #tiff.imwrite(gt_filename, gt.astype(np.float32), dtype=np.float32)
+    tiff.imwrite(sr_filename, output1.astype(np.float32), dtype=np.float32)
+
+    print(f"Immagini salvate: {gt_filename}, {sr_filename}")
+
+    # Aggiornamento delle somme per la media
     if summed_measures is None:
         origin_summed = origin_measures
         summed_measures = hr_measures
     else:
         origin_summed = {k: v + origin_measures[k] for (k, v) in origin_summed.items()}
-origin_summed = {k: v / 10 for (k, v) in origin_summed.items()}
-print('Average Measures')
-print(origin_summed)
+        summed_measures = {k: v + hr_measures[k] for (k, v) in summed_measures.items()}
+
+    # Aggiornamento del miglior caso per ogni metrica
+    for k, v in hr_measures.items():
+        value_scalar = np.mean(v)  # Usa la media per confrontare i valori
+        best_value, best_index = best_measures[k]
+        if (k in ['PSNR', 'SSIM'] and value_scalar > best_value) or (k in ['MSE', 'SID', 'MRAE', 'APPSA'] and value_scalar < best_value):
+            best_measures[k] = (value_scalar, iteration)
+
+# Calcolo della media finale
+origin_summed = {k: np.mean(v) / len(val_images) for (k, v) in origin_summed.items()}
+summed_measures = {k: np.mean(v) / len(val_images) for (k, v) in summed_measures.items()}
+
+# Stampiamo le misure medie
+print("\n===== Average Measures =====")
+for key, value in origin_summed.items():
+    print(f"{key} (original): {value:.6f}")
+for key, value in summed_measures.items():
+    print(f"{key} (SR): {value:.6f}")
+
+# Stampiamo i migliori casi
+print("\n===== Best Cases =====")
+for key, (value, index) in best_measures.items():
+    print(f"{key}: {value:.6f} (Image {index})")
+
 
